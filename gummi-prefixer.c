@@ -47,7 +47,7 @@ int readFromPipe(int fd, char *buffer, char *prefix) {
 		writeLen++;
 	}
 	fprintf(stdout, "%s", writeBuffer);
-	syslog (LOG_INFO, writeBuffer);
+	syslog (LOG_INFO, "%s", writeBuffer);
 
 	return 0;
 }
