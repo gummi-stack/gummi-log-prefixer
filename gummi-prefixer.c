@@ -31,9 +31,9 @@ int readFromPipe(int fd, char *buffer, char *prefix) {
 	for(int i = 0; i < len; i++) {
 		char c = buffer[i];
 		if(dumpPrefix == 1) {
-			memcpy(writeBuffer, prefix, strlen(prefix));
+			writeLen = strlen(prefix);
+			memcpy(writeBuffer, prefix, writeLen);
 
-			writeLen = strlen(writeBuffer);
 			writeBuffer[writeLen] = ' ';
 			writeLen++;
 
@@ -115,7 +115,7 @@ int main (int argc, char **argv) {
 			}
 		}
 
-		tv.tv_sec = 2;
+		tv.tv_sec = 10;
 		tv.tv_usec = 0;
 
 		if ((numActive = select(fdMax + 1, &readfds, NULL, NULL, &tv)) == -1) {
