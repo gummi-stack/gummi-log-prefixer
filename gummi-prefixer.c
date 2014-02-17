@@ -60,8 +60,8 @@ void readFromPipe(int fd, char *buffer, char *prefix) {
 int OUT_COUNT = 10;
 
 int main (int argc, char **argv) {
-	if(argc < 5) {
-		printf(" usage: %s syslogTag appUuid appName.orderNum command arg1 arg2\n", argv[0]);
+	if(argc < 4) {
+		printf(" usage: %s syslogTag \"prefix\" command arg1 arg2 ..\n", argv[0]);
 		return 1;
 	}
 
@@ -83,7 +83,7 @@ int main (int argc, char **argv) {
 			close(pipes[i][1]);
 		}
 
-		execvp(argv[4], argv + 4);
+		execvp(argv[3], argv + 3);
 		return 0;
 	}
 
@@ -100,8 +100,8 @@ int main (int argc, char **argv) {
 	for(int i=0; i < OUT_COUNT; i++) {
 		close(pipes[i][1]);  // close the write end of the pipe in the parent
 
-		prefixes[i] = malloc(strlen(argv[2]) + strlen(argv[3]) + 4);
-		sprintf(prefixes[i], "%s %s %i", argv[2], argv[3], i + 1);
+		prefixes[i] = malloc(strlen(argv[2]) + 3);
+		sprintf(prefixes[i], "%s %i", argv[2], i + 1);
 	}
 
 	int numActive = 0;
