@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/select.h>
 
@@ -13,15 +14,15 @@
 char writeBuffer[BUFFER_SIZE];
 
 
-int readFromPipe(int fd, char *buffer, char *prefix) {
+void readFromPipe(int fd, char *buffer, char *prefix) {
 	int rv;
 	memset(writeBuffer, '\0', BUFFER_SIZE);
 
 	if ( (rv = read(fd, buffer, BUFFER_SIZE)) < 0 ) {
 		printf("READ ERROR FROM PIPE");
-		return -1;
+		return;
 	} else if (rv == 0) {
-		return -1;
+		return;
 	}
 
 	int writeLen = 0;
@@ -46,10 +47,13 @@ int readFromPipe(int fd, char *buffer, char *prefix) {
 		writeBuffer[writeLen] = c;
 		writeLen++;
 	}
+
 	fprintf(stdout, "%s", writeBuffer);
+	fflush(stdout);
+
 	syslog (LOG_INFO, "%s", writeBuffer);
 
-	return 0;
+	return;
 }
 
 // if more than 10, fix all string allocations (currently it expects only one digit number)
@@ -61,18 +65,19 @@ int main (int argc, char **argv) {
 		return 1;
 	}
 
-	// syslog
-	setlogmask (LOG_UPTO (LOG_INFO));
-	openlog (argv[1], LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
 	int pipes[OUT_COUNT][2];
 
 	for(int i=0; i < OUT_COUNT; i++) {
-		pipe(pipes[i]);
+		if (pipe(pipes[i]) < 0) {
+			perror("Failed to create pipe\n");
+			exit(1);
+		}
 	}
 
 
-	if (fork() == 0) {
+	int pid;
+	if ((pid = fork()) == 0) {
 		for(int i=0; i < OUT_COUNT; i++) {
 			dup2(pipes[i][1], i + 1);  // send stderr to the pipe
 			close(pipes[i][1]);
@@ -82,22 +87,18 @@ int main (int argc, char **argv) {
 		return 0;
 	}
 
-	int opened[OUT_COUNT];
-	int openedCount = 0;
 	char *prefixes[OUT_COUNT];
 	struct timeval tv;
 	int fdMax;
 	fd_set readfds;
 
+	// syslog
+	setlogmask (LOG_UPTO (LOG_INFO));
+	openlog (argv[1], LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
+	int tmp;
 	for(int i=0; i < OUT_COUNT; i++) {
 		close(pipes[i][1]);  // close the write end of the pipe in the parent
-		opened[i] = 0;
-
-		if(isatty(i+1) == 1) {
-			opened[i] = 1;
-			openedCount++;
-		}
 
 		prefixes[i] = malloc(strlen(argv[2]) + strlen(argv[3]) + 4);
 		sprintf(prefixes[i], "%s %s %i", argv[2], argv[3], i + 1);
@@ -105,7 +106,8 @@ int main (int argc, char **argv) {
 
 	int numActive = 0;
 	char mat[OUT_COUNT][BUFFER_SIZE];
-	while(openedCount > 0) {
+	int status;
+	while(waitpid (pid, &status, WNOHANG) == 0) {
 		fdMax = 0;
 		FD_ZERO(&readfds);
 		for(int i=0; i < OUT_COUNT; i++) {
@@ -128,7 +130,7 @@ int main (int argc, char **argv) {
 
 		for(int i=0; i < OUT_COUNT; i++) {
 			if(FD_ISSET(pipes[i][0], &readfds)) {
-				openedCount += readFromPipe(pipes[i][0], mat[i], prefixes[i]);
+				readFromPipe(pipes[i][0], mat[i], prefixes[i]);
 			}
 		}
 	}
