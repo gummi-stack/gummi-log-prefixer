@@ -16,9 +16,8 @@ char writeBuffer[BUFFER_SIZE];
 
 void readFromPipe(int fd, char *buffer, char *prefix) {
 	int rv;
-	memset(writeBuffer, '\0', BUFFER_SIZE);
 
-	if ( (rv = read(fd, buffer, BUFFER_SIZE)) < 0 ) {
+	if((rv = read(fd, buffer, BUFFER_SIZE)) < 0) {
 		printf("READ ERROR FROM PIPE");
 		return;
 	} else if (rv == 0) {
@@ -31,6 +30,7 @@ void readFromPipe(int fd, char *buffer, char *prefix) {
 
 	for(int i = 0; i < len; i++) {
 		char c = buffer[i];
+
 		if(dumpPrefix == 1) {
 			writeLen = strlen(prefix);
 			memcpy(writeBuffer, prefix, writeLen);
@@ -40,6 +40,7 @@ void readFromPipe(int fd, char *buffer, char *prefix) {
 
 			dumpPrefix = 0;
 		}
+
 		if (c == '\n') {
 			dumpPrefix = 1;
 		}
@@ -47,6 +48,7 @@ void readFromPipe(int fd, char *buffer, char *prefix) {
 		writeBuffer[writeLen] = c;
 		writeLen++;
 	}
+	writeBuffer[writeLen] = '\0';
 
 	fprintf(stdout, "%s", writeBuffer);
 	fflush(stdout);
@@ -96,7 +98,6 @@ int main (int argc, char **argv) {
 	setlogmask (LOG_UPTO (LOG_INFO));
 	openlog (argv[1], LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
-	int tmp;
 	for(int i=0; i < OUT_COUNT; i++) {
 		close(pipes[i][1]);  // close the write end of the pipe in the parent
 
@@ -104,12 +105,14 @@ int main (int argc, char **argv) {
 		sprintf(prefixes[i], "%s %i", argv[2], i + 1);
 	}
 
+	int status;
 	int numActive = 0;
 	char mat[OUT_COUNT][BUFFER_SIZE];
-	int status;
+
 	while(waitpid (pid, &status, WNOHANG) == 0) {
 		fdMax = 0;
 		FD_ZERO(&readfds);
+
 		for(int i=0; i < OUT_COUNT; i++) {
 			FD_SET(pipes[i][0], &readfds);
 			if (pipes[i][0] > fdMax) {
@@ -124,7 +127,7 @@ int main (int argc, char **argv) {
 			perror("select");
 			exit(1);
 		} else if (numActive == 0) {
-			printf("select() timed out\n");
+			//printf("select() timed out\n");
 			continue;
 		}
 
