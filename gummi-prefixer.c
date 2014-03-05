@@ -9,12 +9,16 @@
 #include <sys/select.h>
 
 
+
+// if more than 10, fix all string allocations (currently it expects only one digit number)
+#define OUT_COUNT 10
 #define BUFFER_SIZE 262144
 
-char writeBuffer[BUFFER_SIZE];
+char writeBuffer[OUT_COUNT][BUFFER_SIZE];
+char writeLen[OUT_COUNT];
 
 
-void readFromPipe(int fd, char *buffer, char *prefix) {
+void readFromPipe(int index, int fd, char *buffer, char *prefix) {
 	int rv;
 
 	if((rv = read(fd, buffer, BUFFER_SIZE)) < 0) {
@@ -24,42 +28,31 @@ void readFromPipe(int fd, char *buffer, char *prefix) {
 		return;
 	}
 
-	int writeLen = 0;
-	int dumpPrefix = 1;
 	size_t len = strlen(buffer);
-
 	for(int i = 0; i < len; i++) {
+		if (writeLen[index] == 0) {
+			writeLen[index] = strlen(prefix);
+			memcpy(writeBuffer[index], prefix, writeLen[index]);
+
+			writeBuffer[index][writeLen[index]++] = ' ';
+		}
+
 		char c = buffer[i];
 
-		if(dumpPrefix == 1) {
-			writeLen = strlen(prefix);
-			memcpy(writeBuffer, prefix, writeLen);
-
-			writeBuffer[writeLen] = ' ';
-			writeLen++;
-
-			dumpPrefix = 0;
+		if (c != '\n') {
+			writeBuffer[index][writeLen[index]++] = c;
+			continue;
 		}
 
-		if (c == '\n') {
-			dumpPrefix = 1;
-		}
-
-		writeBuffer[writeLen] = c;
-		writeLen++;
+		writeBuffer[index][writeLen[index]] = '\0';
+		fprintf(stdout, "%s\n", writeBuffer[index]);
+		fflush(stdout);
+		syslog (LOG_INFO, "%s\n", writeBuffer[index]);
+		writeLen[index] = 0;
 	}
-	writeBuffer[writeLen] = '\0';
-
-	fprintf(stdout, "%s", writeBuffer);
-	fflush(stdout);
-
-	syslog (LOG_INFO, "%s", writeBuffer);
 
 	return;
 }
-
-// if more than 10, fix all string allocations (currently it expects only one digit number)
-int OUT_COUNT = 10;
 
 int main (int argc, char **argv) {
 	if(argc < 4) {
@@ -133,7 +126,7 @@ int main (int argc, char **argv) {
 
 		for(int i=0; i < OUT_COUNT; i++) {
 			if(FD_ISSET(pipes[i][0], &readfds)) {
-				readFromPipe(pipes[i][0], mat[i], prefixes[i]);
+				readFromPipe(i, pipes[i][0], mat[i], prefixes[i]);
 			}
 		}
 	}
