@@ -10,7 +10,6 @@
 
 
 
-// if more than 10, fix all string allocations (currently it expects only one digit number)
 #define OUT_COUNT 10
 #define BUFFER_SIZE 262144
 
@@ -28,12 +27,10 @@ void readFromPipe(int index, int fd, char *buffer, char *prefix) {
 		return;
 	}
 
-	size_t len = strlen(buffer);
-	for(int i = 0; i < len; i++) {
+	for(int i = 0; i < rv; i++) {
 		if (writeLen[index] == 0) {
 			writeLen[index] = strlen(prefix);
 			memcpy(writeBuffer[index], prefix, writeLen[index]);
-
 			writeBuffer[index][writeLen[index]++] = ' ';
 		}
 
@@ -94,7 +91,7 @@ int main (int argc, char **argv) {
 	for(int i=0; i < OUT_COUNT; i++) {
 		close(pipes[i][1]);  // close the write end of the pipe in the parent
 
-		prefixes[i] = malloc(strlen(argv[2]) + 3);
+		prefixes[i] = malloc(strlen(argv[2]) + 4);
 		sprintf(prefixes[i], "%s %i", argv[2], i + 1);
 	}
 
