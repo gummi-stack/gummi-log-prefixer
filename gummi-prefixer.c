@@ -13,11 +13,11 @@
 #define OUT_COUNT 10
 #define BUFFER_SIZE 262144
 
-#define VERSION "0.0.6"
+#define VERSION "0.0.7"
 
 char readBuffer[BUFFER_SIZE];
 char writeBuffer[OUT_COUNT][BUFFER_SIZE];
-char writeLen[OUT_COUNT];
+int writeLen[OUT_COUNT];
 
 
 void readFromPipe(int index, int fd, char *prefix) {
