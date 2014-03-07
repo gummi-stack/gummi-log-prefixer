@@ -13,14 +13,15 @@
 #define OUT_COUNT 10
 #define BUFFER_SIZE 262144
 
+char readBuffer[BUFFER_SIZE];
 char writeBuffer[OUT_COUNT][BUFFER_SIZE];
 char writeLen[OUT_COUNT];
 
 
-void readFromPipe(int index, int fd, char *buffer, char *prefix) {
+void readFromPipe(int index, int fd, char *prefix) {
 	int rv;
 
-	if((rv = read(fd, buffer, BUFFER_SIZE)) < 0) {
+	if((rv = read(fd, readBuffer, BUFFER_SIZE - strlen(prefix) - 2)) < 0) {
 		printf("READ ERROR FROM PIPE");
 		return;
 	} else if (rv == 0) {
@@ -34,10 +35,13 @@ void readFromPipe(int index, int fd, char *buffer, char *prefix) {
 			writeBuffer[index][writeLen[index]++] = ' ';
 		}
 
-		char c = buffer[i];
+		char c = readBuffer[i];
 
 		if (c != '\n') {
 			writeBuffer[index][writeLen[index]++] = c;
+		}
+
+		if (c != '\n' && writeLen[index] < BUFFER_SIZE - 1) {
 			continue;
 		}
 
@@ -97,7 +101,6 @@ int main (int argc, char **argv) {
 
 	int status;
 	int numActive = 0;
-	char mat[OUT_COUNT][BUFFER_SIZE];
 
 	while(waitpid (pid, &status, WNOHANG) == 0) {
 		fdMax = 0;
@@ -123,7 +126,7 @@ int main (int argc, char **argv) {
 
 		for(int i=0; i < OUT_COUNT; i++) {
 			if(FD_ISSET(pipes[i][0], &readfds)) {
-				readFromPipe(i, pipes[i][0], mat[i], prefixes[i]);
+				readFromPipe(i, pipes[i][0], prefixes[i]);
 			}
 		}
 	}
