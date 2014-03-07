@@ -13,6 +13,8 @@
 #define OUT_COUNT 10
 #define BUFFER_SIZE 262144
 
+#define VERSION "0.0.6"
+
 char readBuffer[BUFFER_SIZE];
 char writeBuffer[OUT_COUNT][BUFFER_SIZE];
 char writeLen[OUT_COUNT];
@@ -57,7 +59,8 @@ void readFromPipe(int index, int fd, char *prefix) {
 
 int main (int argc, char **argv) {
 	if(argc < 4) {
-		printf(" usage: %s syslogTag \"prefix\" command arg1 arg2 ..\n", argv[0]);
+		printf("gummi-prefixer v%s\n", VERSION);
+		printf("  usage: %s syslogTag \"prefix\" command arg1 arg2 ..\n", argv[0]);
 		return 1;
 	}
 
